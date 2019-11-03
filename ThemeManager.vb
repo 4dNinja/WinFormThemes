@@ -1,20 +1,15 @@
 ﻿Module ThemeManager
-    ReadOnly DarkBackColour As Color = Color.FromArgb(19, 19, 19)
-    ReadOnly DarkForeColour As Color = Color.FromArgb(255, 255, 255)
-    ReadOnly DarkBackColourLight As Color = Color.FromArgb(31, 31, 31)
-    'ReadOnly DefaultAccentColour As Color = Color.Purple
+    Private currentLoadedTheme As String = String.Empty
 
-    Private storedSystemUsingLightTheme As Boolean = 1
-
-    Public Function IsSystemUsingLightTheme() As Boolean
+    Public Function SystemTheme() As String
         If My.Computer.Registry.GetValue("HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "AppsUseLightTheme", 1) Then
-            Return 1
+            Return Themes(Theme.Light)
         Else
-            Return 0
+            Return Themes(Theme.Dark)
         End If
     End Function
 
-    Public Property AppAccent() As Color
+    Public Property AppAccentColor() As Color
         Get
             Return My.Settings.AppAccent
         End Get
@@ -24,13 +19,12 @@
         End Set
     End Property
 
-
-    Public Function GetSystemAccent() As Color
+    Public Function SystemAccentColor() As Color
         Dim accent As Integer = My.Computer.Registry.GetValue("HKEY_CURRENT_USER\Software\Microsoft\Windows\DWM", "AccentColor", -1)
         If accent > -1 Then
             Return Color.FromArgb(GetArgb(accent))
         Else
-            Return AppAccent
+            Return AppAccentColor
         End If
     End Function
 
@@ -47,9 +41,9 @@
         Dark
     End Enum
 
-    Private ReadOnly ThemeLookup() As String = {"System", "Light", "Dark"}
+    Public ReadOnly Themes() As String = {"System", "Light", "Dark"}
 
-    Public Sub SetAppTheme(ByVal theme As Theme)
+    Public Sub SetAppTheme(ByVal theme As String)
         My.Settings.AppTheme = theme
         My.Settings.Save()
     End Sub
@@ -63,95 +57,55 @@
     ''' </summary>
     ''' <param name="form">Form to apply theme.</param>
     Public Sub ThemeForm(ByVal form As Form)
-        Dim appTheme As String = ThemeManager.AppTheme()
-
-        If appTheme = Theme.System Then
-            If IsSystemUsingLightTheme() Then
-                appTheme = Theme.Light
-            Else
-                appTheme = Theme.Dark
-            End If
+        Dim tAppTheme As String = AppTheme()
+        If tAppTheme = Themes(Theme.System) Then
+            tAppTheme = SystemTheme()
         End If
 
-        If appTheme = Theme.Light Then
-            form.BackColor = Form.DefaultBackColor
-            form.ForeColor = Form.DefaultForeColor
-            SetControlsLight(form.Controls)
-        Else ' Theme.Dark
-            form.BackColor = DarkBackColour
-            form.ForeColor = DarkForeColour
-            SetControlsDark(form.Controls)
+        If currentLoadedTheme IsNot tAppTheme Then
+            LoadTheme($"{CurDir()}\themes\{tAppTheme}.xml")
         End If
+
+        form.BackColor = themeColours("System.Windows.Forms.Form")("BackColor")
+        form.ForeColor = themeColours("System.Windows.Forms.Form")("ForeColor")
+        ThemeControls(form.Controls)
     End Sub
 
-    Private themeColours As New Dictionary(Of String, Color)
-    Private controlColours As New Dictionary(Of String, ControlColour)
+    Private themeColours As New Dictionary(Of String, Dictionary(Of String, Color))
 
-    Private Sub SetColours()
-        themeColours.Add("System.Windows.Forms.Button.BackColor", Button.DefaultBackColor)
-        themeColours.Add("System.Windows.Forms.Button.ForeColor", Button.DefaultForeColor)
+    ' Load theme colours from a .xml file
+    Private Sub LoadTheme(ByVal themeFile As String)
+        themeColours.Clear()
+        Dim themeDoc As XElement = XElement.Load(themeFile)
 
-        controlColours.Add("System.Windows.Forms.Button", New ControlColour("BackColor", Button.DefaultBackColor))
-        controlColours.Add("System.Windows.Forms.Button", New ControlColour("ForeColor", Button.DefaultForeColor))
-
-
-
-        '      controlColours.Add("System.Windows.Forms.Button", CType(Dictionary(Of String, Color),"BackColor", Button.DefaultBackColor)
-    End Sub
-
-    Private Structure ControlColour
-        Dim control As String
-        Dim colour As Color
-
-        Public Sub New(controlNew As String, colourNew As Color)
-            Me.control = controlNew
-            Me.colour = colourNew
-        End Sub
-    End Structure
-
-    Private Sub SetControlsLight(ByVal ctrlCol As Control.ControlCollection)
-        For Each c In ctrlCol
-            Select Case c.GetType.ToString
-                Case "System.Windows.Forms.Button"
-                    c.BackColor = Button.DefaultBackColor
-                    c.ForeColor = Button.DefaultForeColor
-                Case "System.Windows.Forms.Label"
-                    c.BackColor = Label.DefaultBackColor
-                    c.ForeColor = Label.DefaultForeColor
-                Case "System.Windows.Forms.GroupBox"
-                    c.BackColor = GroupBox.DefaultBackColor
-                    c.ForeColor = GroupBox.DefaultForeColor
-                    SetControlsLight(c.Controls)
-                Case "System.Windows.Forms.TextBox"
-                    c.BackColor = Color.FromKnownColor(KnownColor.ControlLight)
-                    c.ForeColor = Color.FromKnownColor(KnownColor.WindowText)
-                Case Else
-                    c.BackColor = Form.DefaultBackColor
-                    c.ForeColor = Form.DefaultForeColor
-            End Select
+        For Each n In themeDoc.Elements
+            Dim tDict As New Dictionary(Of String, Color)
+            For Each nc In n.Elements
+                tDict.Add(nc.Name.LocalName, ColorTranslator.FromHtml(nc.Value))
+            Next
+            themeColours.Add(n.Name.LocalName, tDict)
         Next
+
+        currentLoadedTheme = Text.RegularExpressions.Regex.Match(themeFile, "[^\\]+?(?=\.xml)").Value
     End Sub
 
-    Private Sub SetControlsDark(ByVal controls As Control.ControlCollection)
+    Private Sub ThemeControls(ByVal controls As Control.ControlCollection)
         For Each control In controls
-            Select Case control.GetType.ToString
-                Case "System.Windows.Forms.Button"
-                    control.BackColor = DarkBackColour
-                    control.ForeColor = DarkForeColour
-                Case "System.Windows.Forms.Label"
-                    control.BackColor = DarkBackColour
-                    control.ForeColor = DarkForeColour
-                Case "System.Windows.Forms.GroupBox"
-                    control.BackColor = DarkBackColour
-                    control.ForeColor = DarkForeColour
-                    SetControlsDark(control.Controls)
-                Case "System.Windows.Forms.RadioButton"
-                    control.BackColor = DarkBackColour
-                    control.ForeColor = DarkForeColour
-                Case Else
-                    control.BackColor = DarkBackColourLight
-                    control.ForeColor = DarkForeColour
-            End Select
+            Try
+                control.BackColor = themeColours(control.GetType.FullName)("BackColor")
+            Catch ex As Exception
+                control.BackColor = control.DefaultBackColor
+            End Try
+
+            Try
+                control.ForeColor = themeColours(control.GetType.FullName)("ForeColor")
+            Catch ex As Exception
+                control.ForeColor = control.DefaultForeColor
+            End Try
+
+            If control.GetType.FullName = "System.Windows.Forms.GroupBox" Then
+                ThemeControls(control.Controls)
+            End If
         Next
     End Sub
 End Module

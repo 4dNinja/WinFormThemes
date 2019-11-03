@@ -1,0 +1,22 @@
+<Controls>
+	<System.Windows.Forms.Form>
+		<BackColor>#f0f0f0</BackColor>
+		<ForeColor>#000000</ForeColor>
+	</System.Windows.Forms.Form>
+	<System.Windows.Forms.Button>
+		<BackColor>#e1e1e1</BackColor>
+		<ForeColor>#000000</ForeColor>
+	</System.Windows.Forms.Button>
+	<System.Windows.Forms.GroupBox>
+		<BackColor>#f0f0f0</BackColor>
+		<ForeColor>#000000</ForeColor>
+	</System.Windows.Forms.GroupBox>
+	<System.Windows.Forms.RadioButton>
+		<BackColor>#f0f0f0</BackColor>
+		<ForeColor>#000000</ForeColor>
+	</System.Windows.Forms.RadioButton>
+	<System.Windows.Forms.Label>
+		<BackColor>#f0f0f0</BackColor>
+		<ForeColor>#000000</ForeColor>
+	</System.Windows.Forms.Label>
+</Controls>
